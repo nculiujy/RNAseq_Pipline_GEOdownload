@@ -38,59 +38,67 @@ def ts_log(msg: str):
 # ─────────────────────────────────────────────
 # 项目内置注释路径（workflow/anno/）
 # 所有路径相对于项目根目录（Snakefile 所在目录）
+# 可通过 --anno_base 和 --hisat2_index 命令行参数覆盖
 # ─────────────────────────────────────────────
-_ANNO_BASE = "workflow/anno"
+_DEFAULT_ANNO_BASE = "workflow/anno"
 
 # HISAT2 索引前缀（不含 .ht2 后缀）
 # 注意：与实际目录名大小写保持一致（humanhisat2Index，全小写）
-HISAT2_INDEX = {
-    "homo":  f"{_ANNO_BASE}/homo/humanhisat2Index/GRCh38",
-    "mouse": f"{_ANNO_BASE}/mouse/mouseHisat2Index/GRCm38",
+_DEFAULT_HISAT2_INDEX = {
+    "homo":  f"{_DEFAULT_ANNO_BASE}/homo/humanhisat2Index/GRCh38",
+    "mouse": f"{_DEFAULT_ANNO_BASE}/mouse/mouseHisat2Index/GRCm38",
 }
 
-# 8 类注释的 GTF 文件与对应定量子目录（StringTie 输出）
-ANNOTATIONS = {
-    "homo": [
-        # mRNA（需用户放置 GENCODE v44 mRNA GTF）
-        {"gff": f"{_ANNO_BASE}/homo/mRNAanno/gencode.v44.mRNA.annotation.gtf",
-         "dir": "mRNA/genecode/stringtie"},
-        # eRNA
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/EnhancerAtlasv2.0_eRNA.hg38.gtf",
-         "dir": "eRNA/EnhancerAtlas/stringtie"},
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/Ensemblv110_eRNA.gtf",
-         "dir": "eRNA/Ensembl/stringtie"},
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/FANTOM5_eRNA.gtf",
-         "dir": "eRNA/FANTOM5/stringtie"},
-        # lncRNA
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/GENCODEv44_lncRNA.gtf",
-         "dir": "lncRNA/GENCODE/stringtie"},
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/NONCODEv6_lncRNA.gtf",
-         "dir": "lncRNA/NONCODE/stringtie"},
-        # miRNA
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/miRBasev22.1_miRNA.gtf",
-         "dir": "miRNA/miRBase/stringtie"},
-        {"gff": f"{_ANNO_BASE}/homo/ncRNAanno/MirGeneDBv2.1_miRNA.gtf",
-         "dir": "miRNA/MirGeneDB/stringtie"},
-    ],
-    "mouse": [
-        {"gff": f"{_ANNO_BASE}/mouse/mRNAanno/gencode.vM25.mRNA.annotation.gtf",
-         "dir": "mRNA/genecode/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/EnhancerAtlasv2.0_eRNA.gtf",
-         "dir": "eRNA/EnhancerAtlas/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/Ensemblv110_eRNA.gtf",
-         "dir": "eRNA/Ensembl/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/FANTOM5_eRNA.gtf",
-         "dir": "eRNA/FANTOM5/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/GENCODEvM25_lncRNA.gtf",
-         "dir": "lncRNA/GENCODE/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/NONCODEv6_lncRNA.gtf",
-         "dir": "lncRNA/NONCODE/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/miRBasev22.1_miRNA.gtf",
-         "dir": "miRNA/miRBase/stringtie"},
-        {"gff": f"{_ANNO_BASE}/mouse/ncRNAanno/MirGeneDBv2.1_miRNA.gtf",
-         "dir": "miRNA/MirGeneDB/stringtie"},
-    ],
-}
+
+def _build_annotations(anno_base):
+    """根据 anno_base 构建 8 类注释的 GTF 文件与对应定量子目录"""
+    return {
+        "homo": [
+            # mRNA（需用户放置 GENCODE v44 mRNA GTF）
+            {"gff": f"{anno_base}/homo/mRNAanno/gencode.v44.mRNA.annotation.gtf",
+             "dir": "mRNA/genecode/stringtie"},
+            # eRNA
+            {"gff": f"{anno_base}/homo/ncRNAanno/EnhancerAtlasv2.0_eRNA.hg38.gtf",
+             "dir": "eRNA/EnhancerAtlas/stringtie"},
+            {"gff": f"{anno_base}/homo/ncRNAanno/Ensemblv110_eRNA.gtf",
+             "dir": "eRNA/Ensembl/stringtie"},
+            {"gff": f"{anno_base}/homo/ncRNAanno/FANTOM5_eRNA.gtf",
+             "dir": "eRNA/FANTOM5/stringtie"},
+            # lncRNA
+            {"gff": f"{anno_base}/homo/ncRNAanno/GENCODEv44_lncRNA.gtf",
+             "dir": "lncRNA/GENCODE/stringtie"},
+            {"gff": f"{anno_base}/homo/ncRNAanno/NONCODEv6_lncRNA.gtf",
+             "dir": "lncRNA/NONCODE/stringtie"},
+            # miRNA
+            {"gff": f"{anno_base}/homo/ncRNAanno/miRBasev22.1_miRNA.gtf",
+             "dir": "miRNA/miRBase/stringtie"},
+            {"gff": f"{anno_base}/homo/ncRNAanno/MirGeneDBv2.1_miRNA.gtf",
+             "dir": "miRNA/MirGeneDB/stringtie"},
+        ],
+        "mouse": [
+            {"gff": f"{anno_base}/mouse/mRNAanno/gencode.vM25.mRNA.annotation.gtf",
+             "dir": "mRNA/genecode/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/EnhancerAtlasv2.0_eRNA.gtf",
+             "dir": "eRNA/EnhancerAtlas/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/Ensemblv110_eRNA.gtf",
+             "dir": "eRNA/Ensembl/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/FANTOM5_eRNA.gtf",
+             "dir": "eRNA/FANTOM5/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/GENCODEvM25_lncRNA.gtf",
+             "dir": "lncRNA/GENCODE/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/NONCODEv6_lncRNA.gtf",
+             "dir": "lncRNA/NONCODE/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/miRBasev22.1_miRNA.gtf",
+             "dir": "miRNA/miRBase/stringtie"},
+            {"gff": f"{anno_base}/mouse/ncRNAanno/MirGeneDBv2.1_miRNA.gtf",
+             "dir": "miRNA/MirGeneDB/stringtie"},
+        ],
+    }
+
+
+# 兼容旧代码：模块级变量（后续被 main() 中 args 覆盖）
+HISAT2_INDEX = _DEFAULT_HISAT2_INDEX.copy()
+ANNOTATIONS = _build_annotations(_DEFAULT_ANNO_BASE)
 
 # PICARD_JAR 默认值：优先使用项目内置路径，可通过 --picard_jar 覆盖
 _DEFAULT_PICARD = "workflow/env/picard-2.18.2/picard.jar"
@@ -131,6 +139,34 @@ def parse_args():
             "再处理下一批，防止磁盘占用膨胀。\n"
             "  0（默认）: 不分块，一次性处理所有样本（原始行为）\n"
             "  正整数   : 每批处理 x 个样本，推荐值 4-8"
+        )
+    )
+    parser.add_argument(
+        "--hisat2_index",
+        default="",
+        help=(
+            "HISAT2 索引前缀路径（覆盖内置默认值）。\n"
+            "例如: workflow/anno/homo/humanhisat2Index/GRCh38\n"
+            "若不指定则使用内置默认值。"
+        )
+    )
+    parser.add_argument(
+        "--anno_base",
+        default="",
+        help=(
+            "注释文件根目录（覆盖内置默认值 workflow/anno）。\n"
+            "GTF 文件相对于此目录按 {species}/mRNAanno/ 等子目录组织。"
+        )
+    )
+    parser.add_argument(
+        "--remove_duplicates",
+        default="true",
+        choices=["true", "false"],
+        help=(
+            "Picard MarkDuplicates 是否删除重复读段。\n"
+            "  true（默认）: REMOVE_DUPLICATES=true（删除 dup reads）\n"
+            "  false       : REMOVE_DUPLICATES=false（仅标记，保留 dup reads）\n"
+            "RNA-seq 定量通常建议 false（仅标记），但默认保持 true 以兼容现有结果。"
         )
     )
     return parser.parse_args()
@@ -211,7 +247,7 @@ def run_fastp(srr, fastq_dir, qc_dir, threads):
 # ─────────────────────────────────────────────
 # Step 3: HISAT2 比对
 # ─────────────────────────────────────────────
-def run_hisat2(srr, qc_dir, align_dir, species, threads, strandedness="unstranded", picard_jar=None):
+def run_hisat2(srr, qc_dir, align_dir, species, threads, strandedness="unstranded", picard_jar=None, remove_duplicates=True):
     index = HISAT2_INDEX.get(species)
     if not index:
         ts_log(f"[Align-Error] {srr}: 未知物种 {species}")
@@ -270,11 +306,12 @@ def run_hisat2(srr, qc_dir, align_dir, species, threads, strandedness="unstrande
             os.remove(sam_file)
 
         _picard = picard_jar or _DEFAULT_PICARD
+        _remove_dup_flag = "true" if remove_duplicates else "false"
         dedup_cmd = [
             "java", "-Xmx15g", "-jar", _picard, "MarkDuplicates",
             f"I={bam_file}", f"O={dedup_bam}",
             f"METRICS_FILE={hisat2_dir}/{srr}.metrics",
-            "REMOVE_DUPLICATES=true", "ASSUME_SORT_ORDER=coordinate"
+            f"REMOVE_DUPLICATES={_remove_dup_flag}", "ASSUME_SORT_ORDER=coordinate"
         ]
         subprocess.run(dedup_cmd, check=True)
         subprocess.run(f"samtools index {dedup_bam}", shell=True, check=True)
@@ -385,11 +422,13 @@ def process_sample(srr, args):
         ts_log(f"[Pipeline-Error] {srr}: QC 失败")
         return False
 
-    # 3. 比对（传入链特异性设置和 picard 路径）
+    # 3. 比对（传入链特异性设置、picard 路径和去重标志）
+    _remove_dup = getattr(args, "remove_duplicates", "true") == "true"
     if not run_hisat2(srr, args.qc_dir, args.align_dir, args.species,
                       args.threads,
                       getattr(args, "strandedness", "unstranded"),
-                      getattr(args, "picard_jar", None)):
+                      getattr(args, "picard_jar", None),
+                      remove_duplicates=_remove_dup):
         ts_log(f"[Pipeline-Error] {srr}: 比对失败")
         return False
 
@@ -412,17 +451,17 @@ def process_sample(srr, args):
 
 def cleanup_chunk(success_srrs, args, keep_bam=False, keep_sra=False):
     """
-    滚动窗口清理：只对**成功完成**的样本立即删除 sra/fastq/bam，释放磁盘。
+    滚动窗口清理：只对**成功完成**的样本删除 fastq/bam，释放磁盘。
     失败的样本保留 .sra，以便 --rerun-incomplete 重试。
     只在 sample_chunk_size > 0 时调用（分块模式）。
+
+    注意：.sra 文件不在此处删除——统一交给 rule shell 末尾的兜底清理
+    （只有整个 GSE 成功时才执行）。这样强行停止/崩溃恢复后，
+    已处理样本的 .sra 仍然存在，可以重试而非重新下载。
     """
     for srr in success_srrs:
-        # 删除 .sra
-        if not keep_sra:
-            sra_path = os.path.join(args.sra_dir, f"{srr}.sra")
-            if os.path.exists(sra_path):
-                os.remove(sra_path)
-                ts_log(f"[ChunkClean] {srr}: 已删除 .sra")
+        # .sra 保留：由 rule 末尾统一清理（防止进程崩溃后数据丢失）
+        ts_log(f"[ChunkClean] {srr}: 保留 .sra（由 rule 末尾统一清理）")
 
         # 删除原始 fastq 和 clean fastq（process_sample 已调 cleanup_fastq，这里兜底）
         for pat in [f"{srr}_1.fastq", f"{srr}_2.fastq", f"{srr}.fastq"]:
@@ -462,7 +501,17 @@ def _run_chunk(chunk_srrs, args):
 
 
 def main():
+    global HISAT2_INDEX, ANNOTATIONS
+
     args = parse_args()
+
+    # 应用命令行覆盖：hisat2_index / anno_base
+    if args.anno_base:
+        ANNOTATIONS = _build_annotations(args.anno_base)
+        ts_log(f"[Config] anno_base 已覆盖为: {args.anno_base}")
+    if args.hisat2_index:
+        HISAT2_INDEX[args.species] = args.hisat2_index
+        ts_log(f"[Config] hisat2_index[{args.species}] 已覆盖为: {args.hisat2_index}")
 
     os.makedirs(args.fastq_dir, exist_ok=True)
     os.makedirs(args.qc_dir, exist_ok=True)
@@ -524,17 +573,31 @@ def main():
             ts_log(f"[Chunk {idx}/{len(chunks)}] 完成，继续下一批")
 
     # ── 最终结果 ──
+    marker_dir = os.path.dirname(args.output_marker) or "."
+    os.makedirs(marker_dir, exist_ok=True)
+    failed_report = os.path.join(marker_dir, "failed_samples.txt")
+
     if all_failed:
         ts_log(f"[Error] 数据集 {args.dataset_id} 以下样本处理失败: {all_failed}")
         ts_log(f"[Error] 流程终止，请检查日志后重新运行（--rerun-incomplete）。")
+        # 写出失败样本列表，方便 UI 展示和用户排查
+        with open(failed_report, "w") as f:
+            f.write(f"# {args.dataset_id} failed samples ({len(all_failed)}/{len(srr_list)})\n")
+            f.write(f"# Generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            for srr in all_failed:
+                f.write(f"{srr}\n")
+        ts_log(f"[Info] 失败样本列表已写出: {failed_report}")
         # 不写 marker，以非零退出码通知 Snakemake 此任务失败
         sys.exit(1)
     else:
         ts_log(f"[Done] 数据集 {args.dataset_id} 所有样本处理完成")
-        os.makedirs(os.path.dirname(args.output_marker) or ".", exist_ok=True)
         with open(args.output_marker, "w") as f:
             f.write("done\n")
         ts_log(f"[Info] 标志文件已写出: {args.output_marker}")
+        # 清理旧的失败记录（如果存在）
+        if os.path.exists(failed_report):
+            os.remove(failed_report)
+            ts_log(f"[Info] 已清除旧的 failed_samples.txt")
 
 
 if __name__ == "__main__":

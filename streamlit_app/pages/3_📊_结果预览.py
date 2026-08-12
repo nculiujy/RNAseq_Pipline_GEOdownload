@@ -22,6 +22,7 @@ if ROOT not in sys.path:
 
 from streamlit_app.core import config_loader as st_cfg
 from streamlit_app.core import geo as st_geo
+from streamlit_app.core.ui_common import render_project_selector
 
 st.set_page_config(page_title="结果预览 — RNAseq_GEO", page_icon="📊", layout="wide")
 
@@ -29,15 +30,47 @@ with st.sidebar:
     st.title("🧬 RNAseq_GEO")
     st.page_link("app.py", label="🏠 首页")
 
-st.title("📊 结果预览")
-
+# 项目选择器（解决子页面直达时 session_state 为空的问题）
 project = st.session_state.get("project", "")
 if not project:
-    st.warning("请先在首页侧边栏选择项目")
+    project = render_project_selector()
+if not project:
+    st.warning("请先在「⚙️ 项目配置」中创建项目")
     st.stop()
+
+st.title("📊 结果预览")
 
 sra_info_dir = st_cfg.get_sra_info_dir(project)
 species = st_cfg.get_species(project)
+
+
+# ─────────── run_id 选择器 ───────────
+def _get_run_ids(project_name, result_base="result"):
+    """列出 result/{project} 下所有 run_id 子目录，按修改时间降序"""
+    base = os.path.join(ROOT, result_base, project_name)
+    if not os.path.isdir(base):
+        return []
+    dirs = [
+        d for d in os.listdir(base)
+        if os.path.isdir(os.path.join(base, d))
+        and not d.startswith("00_")  # 排除 00_final_matrices 等项目级目录
+    ]
+    dirs.sort(key=lambda d: os.path.getmtime(os.path.join(base, d)), reverse=True)
+    return dirs
+
+
+_run_ids = _get_run_ids(project)
+if not _run_ids:
+    st.info("尚无运行结果（`result/{project}/` 下无 run_id 目录）")
+    st.stop()
+
+_selected_run_id = st.selectbox(
+    "选择 run_id（批次）",
+    _run_ids,
+    index=0,
+    help="默认选中最近修改的批次目录"
+)
+run_base = os.path.join(ROOT, "result", project, _selected_run_id)
 
 tab_src, tab_qc, tab_matrix = st.tabs([
     "🗂️ 数据来源",
@@ -116,7 +149,7 @@ with tab_src:
 with tab_qc:
     st.subheader("🩺 比对质量控制")
 
-    qc_csv = f"result/{project}/03_Align_Filter/alignment_quality.csv"
+    qc_csv = os.path.join(run_base, "03_Align_Filter", "alignment_quality.csv")
 
     if not os.path.exists(qc_csv):
         st.info(
@@ -180,7 +213,7 @@ with tab_qc:
 
             # fastp JSON 汇总
             fastp_files = sorted(
-                glob.glob(f"result/{project}/02_QC/**/qc_reports/*_fastp.json",
+                glob.glob(os.path.join(run_base, "02_QC", "**", "qc_reports", "*_fastp.json"),
                           recursive=True)
             )[:20]
             if fastp_files:
@@ -215,7 +248,7 @@ with tab_matrix:
     st.subheader("🧬 表达量矩阵")
 
     matrix_files = sorted(
-        glob.glob(f"result/{project}/04_merge_matrices/Matrices_*/*_matrix.csv")
+        glob.glob(os.path.join(run_base, "04_merge_matrices", "Matrices_*", "*_matrix.csv"))
     )
 
     if not matrix_files:

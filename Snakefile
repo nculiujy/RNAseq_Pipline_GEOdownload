@@ -92,6 +92,7 @@ include: "workflow/rules/01_download_sra.smk"
 include: "workflow/rules/02_dataset_pipeline.smk"
 include: "workflow/rules/03_filter_alignment.smk"
 include: "workflow/rules/04_merge_matrices.smk"
+include: "workflow/rules/05_merge_all_batches.smk"
 
 # ──────────────────────────────────────────────
 # 磁盘告警钩子
@@ -105,7 +106,23 @@ onstart:
         print(f"\n{'!'*50}")
         print(f"⚠️  磁盘告警: 剩余 {_free_gb:.1f} GB < 阈值 {_min_free} GB")
         print(f"{'!'*50}\n")
-    print(f"[onstart] run_id = {_run_id}")
+        # 严格模式：磁盘不足时中止（防止写满磁盘导致数据损坏）
+        _strict_disk = config.get("batch", {}).get("strict_disk_check", False)
+        if _strict_disk:
+            raise RuntimeError(
+                f"磁盘空间不足: {_free_gb:.1f} GB < {_min_free} GB。"
+                f"请释放磁盘空间或在 config.yaml batch.min_free_gb 中降低阈值。"
+                f"若要强制启动，设置 batch.strict_disk_check: false"
+            )
+    # 并发预检
+    _pt = config.get("pipeline_threads", 8)
+    _pp = config.get("pipeline_parallel", 4)
+    _gs = config.get("batch", {}).get("gse_slots", 1)
+    _cpu = os.cpu_count() or 1
+    _total_needed = _pt * _pp * _gs
+    if _total_needed > _cpu:
+        print(f"[onstart] ⚠️  并发偏高: {_gs}×{_pp}×{_pt}={_total_needed} > CPU核心数 {_cpu}")
+    print(f"[onstart] run_id = {_run_id}, disk_free = {_free_gb:.1f} GB")
 
 # ──────────────────────────────────────────────
 # 构建最终目标文件列表

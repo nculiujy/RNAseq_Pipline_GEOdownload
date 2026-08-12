@@ -198,6 +198,24 @@ with tab1:
             help="04_merge_matrices 用于识别物种/注释类型的基准路径"
         )
 
+    # ── 并发配置可行性预检 ──
+    _sys_cpu = os.cpu_count() or 1
+    _total_threads_needed = int(gse_slots) * int(pipeline_parallel) * int(pipeline_threads)
+    _jobs_cfg = cfg.get("batch", {}).get("jobs", 32)
+    if _total_threads_needed > _sys_cpu:
+        st.warning(
+            f"⚠️ **并发配置偏高**: gse_slots({gse_slots}) × pipeline_parallel({pipeline_parallel}) "
+            f"× pipeline_threads({pipeline_threads}) = **{_total_threads_needed}** 线程，"
+            f"超过系统 CPU 核心数 **{_sys_cpu}**。\n\n"
+            f"建议降低参数使乘积 ≤ {_sys_cpu}。"
+        )
+    if _total_threads_needed > _jobs_cfg:
+        st.info(
+            f"ℹ️ gse_slots × parallel × threads = {_total_threads_needed} > "
+            f"batch.jobs({_jobs_cfg})，"
+            f"Snakemake 调度会自动串行化部分任务（实际并行度受 -j {_jobs_cfg} 限制）。"
+        )
+
     if st.button("💾 保存全局参数", type="primary", key="save_global"):
         fresh = load_config()
         fresh["download_threads"]       = int(download_threads)
@@ -527,32 +545,50 @@ except Exception as e:
 # ═══════════════════════════════════════════════
 with tab5:
     st.subheader("工具链版本检测")
-    st.caption("确认所有工具均在 PATH 中可用（需激活 conda activate RNAseq_Pipline）")
+
+    # 从 config 读取 conda 环境名
+    _conda_env = load_config().get("conda_env", "RNAseq_Pipline")
+    st.caption(
+        f"通过 `conda run -n {_conda_env}` 执行检测，"
+        f"确保工具在目标环境中可用（即使 streamlit 从其他环境启动）。"
+    )
 
     tools_info = [
-        ("hisat2",        ["hisat2",        "--version"]),
-        ("fastp",         ["fastp",         "--version"]),
-        ("stringtie",     ["stringtie",     "--version"]),
-        ("samtools",      ["samtools",      "--version"]),
-        ("fasterq-dump",  ["fasterq-dump",  "--version"]),
-        ("prefetch",      ["prefetch",      "--version"]),
-        ("snakemake",     ["snakemake",     "--version"]),
-        ("python",        ["python",        "--version"]),
-        ("java",          ["java",          "-version"]),
+        ("hisat2",        "hisat2 --version"),
+        ("fastp",         "fastp --version"),
+        ("stringtie",     "stringtie --version"),
+        ("samtools",      "samtools --version"),
+        ("fasterq-dump",  "fasterq-dump --version"),
+        ("prefetch",      "prefetch --version"),
+        ("snakemake",     "snakemake --version"),
+        ("python",        "python --version"),
+        ("java",          "java -version"),
     ]
 
     col_name, col_status = st.columns([2, 8])
     col_name.markdown("**工具**")
     col_status.markdown("**版本信息**")
 
-    for name, cmd in tools_info:
+    for name, cmd_str in tools_info:
         c1, c2 = st.columns([2, 8])
         c1.write(f"`{name}`")
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-            ver = (r.stdout + r.stderr).strip().split("\n")[0][:100]
-            c2.success(ver or "✅ 已安装")
+            # 使用 conda run 在目标环境中执行，避免 PATH 不包含工具的误报
+            full_cmd = ["conda", "run", "-n", _conda_env, "--no-banner", "bash", "-c", cmd_str]
+            r = subprocess.run(full_cmd, capture_output=True, text=True, timeout=15)
+            output = (r.stdout + r.stderr).strip()
+            ver = output.split("\n")[0][:100] if output else ""
+            if r.returncode == 0 and ver:
+                c2.success(ver)
+            elif ver:
+                # 部分工具 --version 返回非零但输出版本号（如 java -version）
+                c2.success(ver)
+            else:
+                c2.error(f"❌ 未找到或执行失败（exit={r.returncode}）")
         except FileNotFoundError:
-            c2.error("❌ 未找到（PATH 中不存在）")
+            # conda 本身不在 PATH
+            c2.error("❌ conda 命令不可用（请确认 conda 已安装并在 PATH 中）")
+        except subprocess.TimeoutExpired:
+            c2.warning("⚠️ 超时")
         except Exception as e:
             c2.warning(str(e)[:80])

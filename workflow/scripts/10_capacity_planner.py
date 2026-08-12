@@ -61,7 +61,27 @@ def parse_args():
                    help="输出目录（plan.json / plan.csv / gantt.html）")
     p.add_argument("--project",    default="",
                    help="项目名（写入 plan.json，用于 UI 区分多项目）")
+    p.add_argument("--gse_list",   default=None,
+                   help="GSE 列表文件路径（如 SRR_table.txt）。"
+                        "若指定，则只规划文件中列出的 GSE（忽略磁盘上存在但不在列表中的 GSE）")
     return p.parse_args()
+
+
+def read_gse_list_file(path):
+    """读取 GSE 列表文件（每行一个 GSE 号，支持 # 注释），返回 set"""
+    import re
+    gses = set()
+    if not path or not os.path.exists(path):
+        return gses
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = re.search(r"(GSE\d+)", line, re.I)
+            if m:
+                gses.add(m.group(1).upper())
+    return gses
 
 
 # ──────────────────────────────────────────────
@@ -331,6 +351,20 @@ def main():
     gse_data = load_sra_info_files(args.sra_info)
     if not gse_data:
         print(f"[ERROR] 在 {args.sra_info} 中未找到 SraRunInfo_*.csv 文件")
+        sys.exit(1)
+
+    # ── 按 GSE 列表过滤（仅规划列表中的 GSE）──
+    if args.gse_list:
+        allowed_gses = read_gse_list_file(args.gse_list)
+        if allowed_gses:
+            before_n = len(gse_data)
+            gse_data = {k: v for k, v in gse_data.items() if k in allowed_gses}
+            print(f"[Plan] 按 --gse_list 过滤: {before_n} → {len(gse_data)} 个 GSE")
+        else:
+            print(f"[WARN] --gse_list 文件为空或不存在: {args.gse_list}，不过滤")
+
+    if not gse_data:
+        print(f"[ERROR] 过滤后无有效 GSE（请检查 --gse_list 是否与 SRA 信息匹配）")
         sys.exit(1)
     print(f"[Plan] 加载 {len(gse_data)} 个 GSE 的 SRA 信息")
 

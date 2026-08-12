@@ -1,6 +1,13 @@
-# RNAseq_GEO 依赖环境（由 RNAseq_Pipline 环境 2026-08-12 导出）
+# RNAseq_GEO 依赖环境
+# ─────────────────────────────────────────────────────────────────
 # 安装: conda env create -f environment.yml
+# 更新: conda env update -f environment.yml --prune
 # 注意: 国内网络建议先配置清华/上交镜像 channels
+#
+# ⚠️ 此文件为项目环境的唯一权威来源。
+#    config.yaml 中 conda_env 指向此处定义的名称。
+#    修改依赖时只改此文件，不要手动 conda install 后忘记同步。
+# ─────────────────────────────────────────────────────────────────
 name: RNAseq_Pipline
 channels:
   - conda-forge
@@ -13,8 +20,10 @@ dependencies:
   - fastp=1.1.0
   - stringtie=3.0.3
   - samtools=1.21
-  - sra-tools=3.2.1
+  - sra-tools=3.2.1        # 含 prefetch, fasterq-dump, vdb-validate
   - snakemake=9.17.2
+  - aria2=1.37             # 多连接下载加速（01_download_sra.py 优先使用）
+  - openjdk=17             # Picard MarkDuplicates 需要 java
   # ── 应用层（pip） ──
   - pip
   - pip:

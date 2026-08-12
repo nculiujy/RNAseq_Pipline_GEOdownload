@@ -65,6 +65,9 @@ rule dataset_pipeline:
         keep_bam          = config.get("cleanup", {}).get("keep_bam", False),
         keep_sra          = config.get("cleanup", {}).get("keep_sra", False),
         sample_chunk_size = config.get("sample_chunk_size", 0),
+        anno_base         = config.get("anno_base", ""),
+        hisat2_index      = lambda wildcards: config.get("hisat2_index", {}).get(wildcards.species, ""),
+        remove_duplicates = "true" if config.get("remove_duplicates", True) else "false",
     log:
         "logs/{project}_{species}_{gse}_02_dataset_pipeline.log"
     threads: config.get("pipeline_threads", 8) * config.get("pipeline_parallel", 4)
@@ -90,6 +93,9 @@ rule dataset_pipeline:
             --strandedness       {params.strandedness} \
             --picard_jar         "{params.picard_jar}" \
             --sample_chunk_size  {params.sample_chunk_size} \
+            --anno_base          "{params.anno_base}" \
+            --hisat2_index       "{params.hisat2_index}" \
+            --remove_duplicates  {params.remove_duplicates} \
             --output_marker      {output.marker} > {log} 2>&1
 
         # ★ 即跑即删（shell 层兜底清理）：

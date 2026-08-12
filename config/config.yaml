@@ -15,17 +15,18 @@ hisat2_index:
   mouse: workflow/anno/mouse/mouseHisat2Index/GRCm38
 gtf_base: workflow/anno
 strandedness: unstranded
-download_threads: 12
+download_threads: 10
 aria2c_connections: 16
 aria2c_split: 16
 aria2c_chunk: 1M
 aria2c_timeout: 300
-pipeline_threads: 12
-pipeline_parallel: 12
-sample_chunk_size: 24
+pipeline_threads: 10
+pipeline_parallel: 10
+sample_chunk_size: 10
 filter_threads: 1
 merge_threads: 1
 alignment_rate_cutoff: 70.0
+remove_duplicates: true
 batch:
   gse_slots: 1
   jobs: 32

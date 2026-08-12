@@ -120,6 +120,24 @@ with st.sidebar:
     else:
         st.caption("⚪ Snakemake 已停止")
 
+    # 完成通知：检测最近批次是否全部完成（含 04 merge）
+    _project_check = st.session_state.get("project", "")
+    if _project_check and not _running:
+        _species_check = st_cfg.get_species(_project_check)
+        _done_c, _total_c, _bn = _get_batch_progress(_project_check, _species_check)
+        if _total_c > 0 and _done_c >= _total_c:
+            # 检查 04 merge 是否也完成
+            _latest_batch_dir = os.path.join(ROOT, "result", _project_check)
+            _batch_dirs_c = sorted(
+                [d for d in glob.glob(os.path.join(_latest_batch_dir, "*"))
+                 if os.path.isdir(d) and "batch" in os.path.basename(d).lower()],
+                key=os.path.getmtime, reverse=True
+            )
+            if _batch_dirs_c:
+                _merge_marker = os.path.join(_batch_dirs_c[0], "04_merge_matrices", "Merge_finished.txt")
+                if os.path.exists(_merge_marker):
+                    st.success(f"✅ 批次 `{_bn}` 全部完成！（{_done_c}/{_total_c} GSE + 矩阵已合并）")
+
     # 当前批次进度条
     _project_sidebar = st.session_state.get("project", "")
     if _project_sidebar:

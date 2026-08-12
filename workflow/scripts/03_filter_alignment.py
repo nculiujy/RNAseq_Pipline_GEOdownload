@@ -8,10 +8,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Step 3.3: Filter Alignment Quality")
     parser.add_argument("--inputdir", required=True, help="Directory containing results")
     parser.add_argument("--outputdir", required=True, help="Output directory for reports")
+    parser.add_argument("--cutoff", type=float, default=70.0,
+                        help="Alignment rate cutoff (default: 70.0%%)")
     return parser.parse_args()
 
-def extract_alignment_rates(inputdir, outputdir):
-    print("Extracting alignment rates...")
+def extract_alignment_rates(inputdir, outputdir, cutoff=70.0):
+    print(f"Extracting alignment rates (cutoff={cutoff}%)...")
     results = []
     
     # 递归查找所有 QC_results.log
@@ -28,7 +30,7 @@ def extract_alignment_rates(inputdir, outputdir):
                     matches = re.findall(r"(\d+\.\d+)%", content)
                     if matches:
                         rate = float(matches[-1])
-                        passed = "Yes" if rate >= 70.0 else "No"
+                        passed = "Yes" if rate >= cutoff else "No"
                         results.append({
                             "Sample_ID": sample_id,
                             "Alignment_Rate": rate,
@@ -44,15 +46,16 @@ def extract_alignment_rates(inputdir, outputdir):
         writer.writeheader()
         writer.writerows(results)
     
+    print(f"Written {len(results)} records to {csv_file} (cutoff={cutoff}%)")
     return csv_file
 
 def main():
     args = parse_args()
     os.makedirs(args.outputdir, exist_ok=True)
-    csv_file = extract_alignment_rates(args.inputdir, args.outputdir)
+    csv_file = extract_alignment_rates(args.inputdir, args.outputdir, cutoff=args.cutoff)
     
     with open(os.path.join(args.outputdir, "Filter_finished.txt"), "w") as f:
-        f.write("Filtering finished.\n")
+        f.write(f"Filtering finished (cutoff={args.cutoff}%).\n")
 
 if __name__ == "__main__":
     main()

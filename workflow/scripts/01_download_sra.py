@@ -213,6 +213,43 @@ def download_with_prefetch(srr, target_dir, sra_path):
 
 
 # ------------------------------------------------------------------ #
+#  SRA 完整性校验（vdb-validate）                                     #
+# ------------------------------------------------------------------ #
+
+def validate_sra(sra_path, srr=""):
+    """
+    使用 vdb-validate 校验 .sra 文件完整性。
+    返回 True（通过）或 False（校验失败或工具不可用）。
+    如果 vdb-validate 不在 PATH 中，打印警告但返回 True（降级为不校验）。
+    """
+    if not which("vdb-validate"):
+        print(f"[Validate] vdb-validate 不在 PATH 中，跳过完整性校验（建议安装 sra-tools>=3.0）")
+        return True
+    try:
+        result = subprocess.run(
+            ["vdb-validate", sra_path],
+            capture_output=True, text=True, timeout=120
+        )
+        if result.returncode == 0:
+            print(f"[Validate] {srr}: ✅ vdb-validate 通过")
+            return True
+        else:
+            err = (result.stdout + result.stderr).strip()[:500]
+            print(f"[Validate] {srr}: ❌ vdb-validate 失败（exit={result.returncode}）: {err}")
+            # 删除损坏文件，让重试可以重新下载
+            if os.path.exists(sra_path):
+                os.remove(sra_path)
+                print(f"[Validate] {srr}: 已删除损坏的 .sra 文件")
+            return False
+    except subprocess.TimeoutExpired:
+        print(f"[Validate] {srr}: vdb-validate 超时（120s），视为通过")
+        return True
+    except Exception as e:
+        print(f"[Validate] {srr}: vdb-validate 异常: {e}，视为通过")
+        return True
+
+
+# ------------------------------------------------------------------ #
 #  主下载入口（aria2c 优先，prefetch 兜底）                           #
 # ------------------------------------------------------------------ #
 
@@ -222,6 +259,7 @@ def download_sra(result_dir, folder, srr,
     """
     下载单个 SRR 到 result_dir/folder/{srr}.sra。
     优先使用 aria2c（多连接），失败后回退到 prefetch。
+    下载成功后自动执行 vdb-validate 完整性校验。
     """
     target_dir = os.path.join(result_dir, folder)
     os.makedirs(target_dir, exist_ok=True)
@@ -245,9 +283,14 @@ def download_sra(result_dir, folder, srr,
             proxy=proxy,
         )
         if ok:
-            print(f"[Success] {folder}: {srr} aria2c 下载完成")
-            return True
-        print(f"[Warn] {folder}: {srr} aria2c 全部 URL 失败，回退到 prefetch")
+            # 下载成功后校验完整性
+            if validate_sra(sra_path, srr):
+                print(f"[Success] {folder}: {srr} aria2c 下载完成且校验通过")
+                return True
+            else:
+                print(f"[Warn] {folder}: {srr} aria2c 下载的文件校验失败，回退到 prefetch")
+        else:
+            print(f"[Warn] {folder}: {srr} aria2c 全部 URL 失败，回退到 prefetch")
     else:
         print(f"[Info] aria2c 未安装，直接使用 prefetch（建议: conda install -c conda-forge aria2）")
 
@@ -255,8 +298,13 @@ def download_sra(result_dir, folder, srr,
     if which("prefetch"):
         ok = download_with_prefetch(srr, target_dir, sra_path)
         if ok:
-            print(f"[Success] {folder}: {srr} prefetch 下载完成")
-            return True
+            # prefetch 下载成功后校验完整性
+            if validate_sra(sra_path, srr):
+                print(f"[Success] {folder}: {srr} prefetch 下载完成且校验通过")
+                return True
+            else:
+                print(f"[Error] {folder}: {srr} prefetch 下载的文件校验失败")
+                return False
         print(f"[Error] {folder}: {srr} prefetch 也失败")
     else:
         print(f"[Error] aria2c 和 prefetch 均不可用，请检查环境")

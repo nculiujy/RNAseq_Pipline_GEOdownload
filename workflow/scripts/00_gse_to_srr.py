@@ -19,7 +19,9 @@ import sys, os, re, io, json, time, csv, gzip, glob
 import urllib.request, urllib.parse
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 FTP_SOFT = "https://ftp.ncbi.nlm.nih.gov/geo/series/{dir}/{gse}/soft/{gse}_family.soft.gz"
-USER_AGENT = "gse_to_srr/1.0 (mailto:your_email@example.com)"
+USER_AGENT = "gse_to_srr/1.0 (mailto:{})".format(
+    os.environ.get("GEO_CONTACT_EMAIL", "your_email@example.com")
+)
 SLEEP = 0.4          # eutils 限速 ~3 req/s，请求间间隔(秒)
 MAX_RETRY = 3        # 单请求最大重试次数
 
@@ -52,12 +54,13 @@ def esearch(db, term, retmax=100000):
     return ids, int(count.group(1)) if count else len(ids)
 
 def soft_text(gse):
-    """下载 GSE 的 family.soft.gz，返回解压文本。目录规则: GSE + 数字前3位 + 'nnn'"""
+    """下载 GSE 的 family.soft.gz，返回解压文本。目录规则: GSE + (编号//1000) + 'nnn'"""
     m = re.fullmatch(r"GSE(\d+)", gse.upper())
     if not m:
         raise ValueError(f"不是合法的GSE号: {gse}")
     digits = m.group(1)
-    url = FTP_SOFT.format(dir=f"GSE{digits[:3]}nnn", gse=gse.upper())
+    # 正确规则: GSE46523 → GSE46nnn（整除1000）；旧版 digits[:3] 在 5 位 GSE 号上会算错
+    url = FTP_SOFT.format(dir=f"GSE{int(digits) // 1000}nnn", gse=gse.upper())
     print(f"[1/4] 下载 SOFT: {url}")
     raw = fetch(url)
     if raw[:2] == b"\x1f\x8b":

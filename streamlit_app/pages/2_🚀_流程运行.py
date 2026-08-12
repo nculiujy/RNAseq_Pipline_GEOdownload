@@ -22,6 +22,7 @@ from streamlit_app.core import config_loader as st_cfg
 from streamlit_app.core import capacity as st_cap
 from streamlit_app.core import state as st_state
 from streamlit_app.core import batch_ctl as bctl
+from streamlit_app.core.ui_common import render_project_selector
 
 st.set_page_config(page_title="流程运行 — RNAseq_GEO", page_icon="🚀", layout="wide")
 
@@ -31,9 +32,12 @@ with st.sidebar:
 
 st.title("🚀 流程运行")
 
+# 项目选择器（解决子页面直达时 session_state 为空的问题）
 project = st.session_state.get("project", "")
 if not project:
-    st.warning("请先在首页侧边栏选择项目")
+    project = render_project_selector()
+if not project:
+    st.warning("请先在「⚙️ 项目配置」中创建项目")
     st.stop()
 
 sra_info_dir = st_cfg.get_sra_info_dir(project)
@@ -165,14 +169,18 @@ with tab_srr:
             d for d in _glob.glob(os.path.join(sra_info_dir, "GSE*"))
             if os.path.isdir(d) and os.path.exists(os.path.join(d, "SraRunInfo.csv"))
         ])
-        fetched_gses = [os.path.basename(d) for d in existing_gse_dirs]
+        _all_fetched = [os.path.basename(d) for d in existing_gse_dirs]
+        # 只统计在当前 GSE 号列表中的（移除的 GSE 不计入）
+        fetched_gses = [g for g in _all_fetched if g in current_gses] if current_gses else _all_fetched
 
-        if fetched_gses:
-            # 对比哪些已获取，哪些待获取
+        if current_gses:
+            # 对比哪些已获取，哪些待获取（以 current_gses 为准）
             pending_fetch = [g for g in current_gses if g not in fetched_gses]
-            st.success(f"✅ 已有 {len(fetched_gses)} 个 GSE 的 SRA 信息")
+            st.success(f"✅ 已获取 {len(fetched_gses)}/{len(current_gses)} 个 GSE 的 SRA 信息")
             if pending_fetch:
                 st.warning(f"⏳ 待获取: {len(pending_fetch)} 个 ({', '.join(pending_fetch[:5])}{'...' if len(pending_fetch)>5 else ''})")
+        elif _all_fetched:
+            st.success(f"✅ 已有 {len(_all_fetched)} 个 GSE 的 SRA 信息（GSE 列表为空）")
         else:
             st.info("尚无 SRA 信息文件，请先保存 GSE 列表并运行爬取")
 
@@ -240,7 +248,9 @@ with tab_intel:
         return st_geo.load_all_sra_info(sra_dir)
 
     sra_rows_intel = get_sra_rows_intel(sra_info_dir)
-    gse_list_intel = sorted(set(r.get("GSE", "") for r in sra_rows_intel if r.get("GSE")))
+    # 只展示当前 SRR_table.txt 中的 GSE（移除的 GSE 不再展示解读卡）
+    _all_fetched_gses = sorted(set(r.get("GSE", "") for r in sra_rows_intel if r.get("GSE")))
+    gse_list_intel = [g for g in _all_fetched_gses if g in current_gses] if current_gses else _all_fetched_gses
 
     if not gse_list_intel:
         st.info("请先在「① 获取 SRR 列表」Tab 中完成 SRR 信息爬取，才能进行 GSE 解读。")
@@ -516,7 +526,8 @@ with tab_cap:
             "--sra_info",   sra_info_dir,
             "--config",     "config/config.yaml",
             "--project",    project,
-            "--output_dir", f"result/{project}/00_planning"
+            "--output_dir", f"result/{project}/00_planning",
+            "--gse_list",   srr_table_path,  # 只规划当前 GSE 列表中的 GSE
         ]
         with st.spinner("运行容量规划..."):
             r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
@@ -574,12 +585,13 @@ with tab_cap:
             import csv as _csv_s
             import glob as _glob_sel
 
-            # 获取所有有 SraRunInfo.csv 的 GSE 列表
-            _gse_dirs_all = sorted([
+            # 获取所有有 SraRunInfo.csv 的 GSE 列表（只展示当前 SRR_table.txt 中的 GSE）
+            _gse_dirs_all_raw = sorted([
                 os.path.basename(d)
                 for d in _glob_sel.glob(os.path.join(sra_info_dir, "GSE*"))
                 if os.path.isdir(d) and os.path.exists(os.path.join(d, "SraRunInfo.csv"))
             ])
+            _gse_dirs_all = [g for g in _gse_dirs_all_raw if g in current_gses] if current_gses else _gse_dirs_all_raw
 
             if not _gse_dirs_all:
                 st.info("未找到 SraRunInfo.csv，请先完成「获取 SRR 列表」步骤。")
@@ -1020,6 +1032,12 @@ with tab_run:
                 "pipeline_parallel": _cfg_snap.get("pipeline_parallel", 4),
                 "sample_chunk_size": _cfg_snap.get("sample_chunk_size", 0),
                 "submitted_at":      datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                # 可复现性参数
+                "strandedness":          _cfg_snap.get("strandedness", "unstranded"),
+                "alignment_rate_cutoff": _cfg_snap.get("alignment_rate_cutoff", 70.0),
+                "hisat2_index":          _cfg_snap.get("hisat2_index", {}),
+                "anno_base":             _cfg_snap.get("anno_base", "workflow/anno"),
+                "remove_duplicates":     _cfg_snap.get("remove_duplicates", True),
             }
             st.session_state["last_submit_params"] = _params
             _param_path = os.path.join(ROOT, "result", project,
@@ -1034,11 +1052,13 @@ with tab_run:
         st.rerun()
 
     # ⏹ 停止（优雅 SIGTERM，运行时可用）
-    if _bc2.button("⏹ 停止", disabled=not _running, key="run_stop"):
-        with st.spinner("发送 SIGTERM，等待当前 job 结束..."):
+    if _bc2.button("⏹ 停止", disabled=not _running, key="run_stop",
+                   help="发送 SIGTERM，Snakemake 会等**当前 GSE 完整跑完**后才退出（可能数小时）。\n"
+                        "如需立即停止，请用「🔴 强行停止」（有数据丢失风险）。"):
+        with st.spinner("发送 SIGTERM，等待当前 GSE 完成后退出（可能需要较长时间）..."):
             _ok, _msg = bctl.stop(timeout=30)
         if _ok:
-            st.success(_msg)
+            st.success(f"{_msg}\n\n⚠️ 注意：Snakemake 会等当前 GSE 跑完才真正退出，状态可能延迟更新。")
         else:
             st.warning(_msg)
         st.rerun()
@@ -1059,6 +1079,12 @@ with tab_run:
                 "pipeline_parallel": _cfg_snap.get("pipeline_parallel", 4),
                 "sample_chunk_size": _cfg_snap.get("sample_chunk_size", 0),
                 "submitted_at":      datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                # 可复现性参数
+                "strandedness":          _cfg_snap.get("strandedness", "unstranded"),
+                "alignment_rate_cutoff": _cfg_snap.get("alignment_rate_cutoff", 70.0),
+                "hisat2_index":          _cfg_snap.get("hisat2_index", {}),
+                "anno_base":             _cfg_snap.get("anno_base", "workflow/anno"),
+                "remove_duplicates":     _cfg_snap.get("remove_duplicates", True),
             }
             st.session_state["last_submit_params"] = _params
             _param_path = os.path.join(ROOT, "result", project,
@@ -1206,7 +1232,7 @@ with tab_run:
 
     import glob as _g_run
     _log_files = sorted(
-        _g_run.glob(os.path.join(ROOT, "logs", "*.log")),
+        _g_run.glob(os.path.join(ROOT, "logs", "**", "*.log"), recursive=True),
         key=os.path.getmtime, reverse=True
     )[:20]
     _log_names = [os.path.relpath(f, ROOT) for f in _log_files]
@@ -1225,11 +1251,17 @@ with tab_run:
     else:
         st.caption("暂无日志")
 
-    # 自动刷新
+    # 自动刷新（使用 st.fragment 局部刷新，避免阻塞交互）
+    # 注意：st.fragment 需要 streamlit >= 1.33；若版本不支持则回退为 autorefresh 方式
     if _auto_r:
-        import time as _t
-        _t.sleep(15)
-        st.rerun()
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=15000, key="auto_refresh_run")
+        except ImportError:
+            # fallback: 短 sleep + rerun（兼容旧版本）
+            import time as _t
+            _t.sleep(15)
+            st.rerun()
 
 # ── 每次渲染结束时保存 UI 状态到文件 ──
 _save_ui_state()

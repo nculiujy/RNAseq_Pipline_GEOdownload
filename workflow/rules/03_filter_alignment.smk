@@ -99,7 +99,8 @@ rule filter_alignment:
         marker = "result/{project}/03_Align_Filter/Filter_finished.txt"
     params:
         inputdir  = _get_align_filter_dir,
-        outputdir = "result/{project}/03_Align_Filter"
+        outputdir = "result/{project}/03_Align_Filter",
+        cutoff    = config.get("alignment_rate_cutoff", 70.0)
     log:
         "logs/{project}_03_filter_alignment.log"
     threads: config.get("filter_threads", 1)
@@ -108,7 +109,8 @@ rule filter_alignment:
         mkdir -p {params.outputdir}
         python {input.script} \
             --inputdir  {params.inputdir} \
-            --outputdir {params.outputdir} > {log} 2>&1
+            --outputdir {params.outputdir} \
+            --cutoff    {params.cutoff} > {log} 2>&1
 
         # 03 脚本自己会写 Filter_finished.txt；若不在预期位置则移动
         if [ ! -f {output.marker} ]; then
