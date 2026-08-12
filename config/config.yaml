@@ -1,0 +1,41 @@
+conda_env: RNAseq_Pipline
+projects:
+- project_name: GBM_homo
+  species: homo
+  rawdata_dir: workflow/resources/homo
+  modules:
+    01_download_sra: true
+    02_dataset_pipeline: true
+    03_filter_alignment: true
+    04_merge_matrices: true
+picard_jar: workflow/env/picard-2.18.2/picard.jar
+anno_base: workflow/anno
+hisat2_index:
+  homo: workflow/anno/homo/humanhisat2Index/GRCh38
+  mouse: workflow/anno/mouse/mouseHisat2Index/GRCm38
+gtf_base: workflow/anno
+strandedness: unstranded
+download_threads: 12
+aria2c_connections: 16
+aria2c_split: 16
+aria2c_chunk: 1M
+aria2c_timeout: 300
+pipeline_threads: 12
+pipeline_parallel: 12
+sample_chunk_size: 24
+filter_threads: 1
+merge_threads: 1
+alignment_rate_cutoff: 70.0
+batch:
+  gse_slots: 1
+  jobs: 32
+  min_free_gb: 300
+cleanup:
+  keep_sra: false
+  keep_bam: false
+planning:
+  safety_disk_ratio: 0.8
+  io_overhead: 0.15
+  alpha_per_m_spots: 0.12
+  beta_fixed_min: 8.0
+  use_gantt: true

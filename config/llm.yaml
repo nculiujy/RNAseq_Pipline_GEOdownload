@@ -1,0 +1,26 @@
+# ============================================================
+# LLM API 配置（config/llm.yaml）
+# ============================================================
+# 支持任何 OpenAI 兼容 API（DeepSeek / 通义 / 本地 vLLM 等）
+# API Key 存放在 config/.env（不进 git）: LLM_API_KEY=sk-xxx
+# ============================================================
+
+llm:
+  provider: openai-compatible          # 固定，使用 openai 库的兼容模式
+  api_base: "https://api.deepseek.com/v1"   # 可换通义: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: "deepseek-chat"               # 或 qwen-max / gpt-4o-mini / local 模型名
+  temperature: 0.2                     # 低温度，减少幻觉
+  timeout_sec: 120                     # 请求超时（秒）
+  max_context_chars: 30000            # 上下文字符数上限（防超长截断）
+  proxy: ""                            # 如需代理: "http://127.0.0.1:7890"
+
+# 缓存与安全
+cache:
+  enabled: true                        # 已有解读卡时跳过（省 token）
+  cache_dir: "result/{project}/00_data_intel"   # {project} 会在运行时替换
+
+# Prompt 控制
+prompt:
+  language: "中文"                     # 解读卡输出语言
+  max_sample_rows: 50                  # 样本表截取行数（防超长）
+  include_qc: true                     # 是否将比对率 QC 摘要加入上下文

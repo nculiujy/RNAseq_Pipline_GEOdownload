@@ -1,0 +1,34 @@
+# ── 运行产物（绝不提交） ──
+result/
+logs/
+.snakemake/
+*.log
+
+# ── Python 缓存 ──
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── 密钥（绝不提交） ──
+config/.env
+.streamlit/secrets.toml
+
+# ── 大文件 / 二进制 ──
+*.tar.gz
+*.zip
+rnaseq_env.tar.gz
+workflow/env/picard-2.18.2/
+
+# ── 大型注释/索引（按需在本地配置，见 README） ──
+workflow/anno/
+workflow/resources/*/GSE*/SraRunInfo.csv
+workflow/resources/*/GSE*/SRR_Acc_List_all.txt
+
+# ── 系统杂项 ──
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# ── 设计文档（不上传） ──
+docs/

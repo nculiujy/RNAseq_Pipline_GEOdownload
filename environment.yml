@@ -1,0 +1,31 @@
+# RNAseq_GEO 依赖环境（由 RNAseq_Pipline 环境 2026-08-12 导出）
+# 安装: conda env create -f environment.yml
+# 注意: 国内网络建议先配置清华/上交镜像 channels
+name: RNAseq_Pipline
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.13
+  # ── 生信工具链（conda） ──
+  - hisat2=2.2.2
+  - fastp=1.1.0
+  - stringtie=3.0.3
+  - samtools=1.21
+  - sra-tools=3.2.1
+  - snakemake=9.17.2
+  # ── 应用层（pip） ──
+  - pip
+  - pip:
+    - streamlit==1.59.1
+    - pandas==2.3.3
+    - numpy==2.4.2
+    - plotly==6.0.0
+    - openai==2.53.0
+    - duckdb==1.5.5
+    - python-dotenv==1.2.2
+    - PyYAML==6.0.3
+    - requests==2.32.5
+    - matplotlib==3.10.9
+    - scipy==1.17.1
