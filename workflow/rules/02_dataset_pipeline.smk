@@ -69,7 +69,7 @@ rule dataset_pipeline:
         hisat2_index      = lambda wildcards: config.get("hisat2_index", {}).get(wildcards.species, ""),
         remove_duplicates = "true" if config.get("remove_duplicates", True) else "false",
     log:
-        "logs/{project}_{species}_{gse}_02_dataset_pipeline.log"
+        "logs/{project}/{species}_{gse}_02_dataset_pipeline.log"
     threads: config.get("pipeline_threads", 8) * config.get("pipeline_parallel", 4)
     resources:
         gse_slots = 1    # ★ 串行化：同一时刻只处理一个 GSE

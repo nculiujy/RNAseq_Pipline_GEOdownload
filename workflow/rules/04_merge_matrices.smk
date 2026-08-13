@@ -31,14 +31,11 @@ rule 04_merge_matrices
 import os
 
 def _get_align_filter_base(wildcards):
-    for proj in config["projects"]:
-        if proj["project_name"] == wildcards.project.split("/")[0]:
-            species = proj["species"]
-            return os.path.join(
-                "result", wildcards.project,
-                "03_Align_Filter", species
-            )
-    return ""
+    """
+    返回 03_Align_Filter 目录（不含物种子目录），
+    让 04_merge_matrices.py 能从相对路径中检测物种名（homo/mouse）。
+    """
+    return os.path.join("result", wildcards.project, "03_Align_Filter")
 
 rule merge_matrices:
     input:
@@ -52,7 +49,7 @@ rule merge_matrices:
         outputdir = "result/{project}/04_merge_matrices/Matrices",
         gtf_base  = config.get("gtf_base", "/home/public_software_annotation")
     log:
-        "logs/{project}_04_merge_matrices.log"
+        "logs/{project}/04_merge_matrices.log"
     threads: config.get("merge_threads", 1)
     shell:
         """

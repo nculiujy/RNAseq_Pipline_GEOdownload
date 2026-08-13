@@ -42,7 +42,7 @@ rule merge_all_batches:
         output_dir  = lambda wildcards: os.path.join("result", wildcards.project, "00_final_matrices"),
         cutoff      = config.get("alignment_rate_cutoff", 70.0)
     log:
-        "logs/{project}_05_merge_all_batches.log"
+        "logs/{project}/05_merge_all_batches.log"
     threads: config.get("merge_threads", 1)
     shell:
         """

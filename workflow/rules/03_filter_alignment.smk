@@ -102,7 +102,7 @@ rule filter_alignment:
         outputdir = "result/{project}/03_Align_Filter",
         cutoff    = config.get("alignment_rate_cutoff", 70.0)
     log:
-        "logs/{project}_03_filter_alignment.log"
+        "logs/{project}/03_filter_alignment.log"
     threads: config.get("filter_threads", 1)
     shell:
         """

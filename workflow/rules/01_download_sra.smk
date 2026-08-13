@@ -53,7 +53,7 @@ rule download_gse:
         chunk        = config.get("aria2c_chunk",       "1M"),
         timeout      = config.get("aria2c_timeout",     300),
     log:
-        "logs/{project}_download_{species}_{gse}.log"
+        "logs/{project}/download_{species}_{gse}.log"
     threads: config.get("download_threads", 8)
     resources:
         gse_slots = 1    # ★ 串行化：同一时刻只下载一个 GSE

@@ -99,20 +99,35 @@ echo " 磁盘剩余: ${FREE_GB}G"
 echo "======================================"
 
 # ── 启动 snakemake ──
-mkdir -p logs
+# 日志目录包含 run_id（按批次隔离）
+LOG_DIR="logs"
+if [ -n "${RUN_ID}" ]; then
+    # 读取 project_name
+    PNAME=$(python3 -c "
+import yaml
+try:
+    cfg = yaml.safe_load(open('config/config.yaml'))
+    print(cfg.get('projects', [{}])[0].get('project_name', 'default'))
+except: print('default')
+" 2>/dev/null)
+    LOG_DIR="logs/${PNAME}/${RUN_ID}"
+fi
+mkdir -p "${LOG_DIR}"
 if [ -n "${EXTRA_CONFIG}" ]; then
     exec snakemake \
         -j "${JOBS}" \
         --resources "gse_slots=${GSE_SLOTS}" \
         --rerun-incomplete \
+        --keep-going \
         --configfile config/config.yaml \
         --config ${EXTRA_CONFIG} \
-        2>&1 | tee -a logs/run_all_console.log
+        2>&1 | tee -a "${LOG_DIR}/run_all_console.log"
 else
     exec snakemake \
         -j "${JOBS}" \
         --resources "gse_slots=${GSE_SLOTS}" \
         --rerun-incomplete \
+        --keep-going \
         --configfile config/config.yaml \
-        2>&1 | tee -a logs/run_all_console.log
+        2>&1 | tee -a "${LOG_DIR}/run_all_console.log"
 fi

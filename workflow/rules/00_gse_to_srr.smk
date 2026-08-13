@@ -37,7 +37,7 @@ rule gse_to_srr:
     params:
         outdir = "result/{project}/00_gse_to_srr"
     log:
-        "logs/{project}_00_gse_to_srr.log"
+        "logs/{project}/00_gse_to_srr.log"
     threads: 1
     shell:
         """

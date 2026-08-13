@@ -35,7 +35,7 @@ cleanup:
   keep_sra: false
   keep_bam: false
 planning:
-  safety_disk_ratio: 0.8
+  safety_disk_ratio: 1.0
   io_overhead: 0.15
   alpha_per_m_spots: 0.12
   beta_fixed_min: 8.0
