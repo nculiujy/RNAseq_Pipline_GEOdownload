@@ -879,7 +879,7 @@ with tab_cap:
 
 # ─────────── Tab ④: 启动 & 监控 ───────────
 with tab_run:
-    st.subheader("④ 启动 & 监控 Snakemake 批处理")
+    st.subheader(" 启动 & 监控 Snakemake 批处理")
     st.caption(
         "通过 `run_all.sh` 后台启动 snakemake（`gse_slots=1` 串行，一批一批跑）。\n"
         "UI 关闭后任务继续运行；重新打开 UI 点「启动/续跑」即自动续跑。"
